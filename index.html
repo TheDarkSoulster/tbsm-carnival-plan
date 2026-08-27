@@ -415,7 +415,7 @@ kbd {
   </svg>
   <p>No images found in <code>public/</code></p>
   <p style="margin-top:4px;font-size:12px;opacity:.7">
-    Add <code>1.png</code>, <code>2.png</code>, … then reload the page.
+    Add <code>img1.png</code>, <code>img2.png</code>, … then reload the page.
   </p>
 </div>
 
@@ -542,18 +542,21 @@ kbd {
 /* ================================================================
    CONFIGURATION — tweak here if needed
 ================================================================ */
+// CONFIGURATION
 const CFG = {
-  dir:      'public/',   // folder with images
-  ext:      'png',       // file extension
-  maxScan:  500,         // how many numbers to probe before stopping
-  chunk:    10,          // parallel probes per batch
-  slideMs:  3500,        // slideshow interval (ms)
+  dir:      'public/',
+  prefix:   'img',
+  ext:      'png',
+  maxScan:  500,
+  chunk:    10,
+  slideMs:  3500,
 };
 
 /* ================================================================
    STATE
 ================================================================ */
-let images   = [];   // ['public/1.png', 'public/2.png', …]
+// STATE comment
+let images = []; // ['public/img1.png', 'public/img2.png', …]
 let current  = 0;
 let isZoomed = false;
 let ssTimer  = null;
@@ -583,7 +586,8 @@ async function discover() {
     const indices = [];
     for (let j = i; j < i + CFG.chunk && j <= CFG.maxScan; j++) indices.push(j);
 
-    const srcs = indices.map(n => `${CFG.dir}${n}.${CFG.ext}`);
+    // Inside discover()
+    const srcs = indices.map(n => `${CFG.dir}${CFG.prefix}${n}.${CFG.ext}`);
     const hits = await Promise.all(srcs.map(probe));
 
     let broke = false;

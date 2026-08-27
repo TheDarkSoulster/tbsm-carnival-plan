@@ -1,1 +1,917 @@
-<!-- - -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- COPYRIGHT SAKET DHULIPALA 2026, ALL RIGHTS RESERVED -->
+  
+  <title>Gallery</title>
+  <style>
+
+/* ──────────────────────────────────────────────────────────
+   TOKENS
+   ────────────────────────────────────────────────────────── */
+:root {
+  --ink:    #0b0b0b;   /* near-black bg              */
+  --matte:  #161616;   /* surface                     */
+  --rule:   #242424;   /* borders / gaps              */
+  --type:   #dedede;   /* primary text                */
+  --dim:    #545454;   /* muted / secondary           */
+  --snap:   #ffffff;   /* accent                      */
+  --bar-h:  52px;
+  --strip-h: 76px;
+  --gap:    3px;       /* the signature gap           */
+}
+
+/* ──────────────────────────────────────────────────────────
+   RESET
+   ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  background: var(--ink);
+  color: var(--type);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+}
+
+/* ──────────────────────────────────────────────────────────
+   HEADER
+   ────────────────────────────────────────────────────────── */
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--bar-h);
+  padding: 0 18px;
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  background: var(--ink);
+  z-index: 20;
+}
+
+.site-header h1 {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--type);
+}
+
+#status {
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* ──────────────────────────────────────────────────────────
+   STATE SCREENS
+   ────────────────────────────────────────────────────────── */
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: calc(100vh - var(--bar-h));
+  color: var(--dim);
+  text-align: center;
+  padding: 24px;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--rule);
+  border-top-color: var(--type);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+code {
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: var(--matte);
+  border: 1px solid var(--rule);
+  padding: 1px 6px;
+  color: var(--type);
+}
+
+/* ──────────────────────────────────────────────────────────
+   GALLERY GRID — contact-sheet aesthetic
+   ────────────────────────────────────────────────────────── */
+#gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--gap);
+  padding: var(--gap);
+  /* The gaps render as visible lines — the signature visual element */
+  background: var(--rule);
+}
+
+.gi {
+  aspect-ratio: 1 / 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--matte);
+  cursor: pointer;
+}
+
+.gi:focus-visible { outline: 2px solid var(--snap); outline-offset: -2px; }
+
+.gi > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity .45s ease, transform .4s ease;
+  will-change: transform;
+}
+
+.gi > img.loaded { opacity: 1; }
+.gi:hover > img  { transform: scale(1.06); }
+
+/* Number badge — slides up on hover */
+.gi-num {
+  position: absolute;
+  bottom: 7px;
+  left: 7px;
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #fff;
+  background: rgba(0,0,0,.6);
+  padding: 1px 6px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .18s, transform .18s;
+  pointer-events: none;
+  letter-spacing: .04em;
+}
+
+.gi:hover .gi-num { opacity: 1; transform: translateY(0); }
+
+/* ──────────────────────────────────────────────────────────
+   LIGHTBOX
+   ────────────────────────────────────────────────────────── */
+#lb {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(4,4,4,.98);
+  flex-direction: column;
+}
+
+#lb.open { display: flex; }
+
+/* --- Toolbar -------------------------------------------- */
+.lb-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--bar-h);
+  padding: 0 12px;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+
+#lb-counter {
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  min-width: 56px;
+  font-variant-numeric: tabular-nums;
+}
+
+#lb-filename {
+  flex: 1;
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 10px;
+}
+
+.lb-actions { display: flex; gap: 4px; min-width: 56px; justify-content: flex-end; }
+
+/* Icon button */
+.ib {
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--type);
+  border-radius: 0;          /* sharp — per the editorial aesthetic */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+  flex-shrink: 0;
+}
+
+.ib:hover        { background: var(--matte); border-color: #3a3a3a; }
+.ib.active       { background: var(--matte); border-color: #4a4a4a; color: #fff; }
+.ib svg          { pointer-events: none; }
+
+/* --- Slideshow progress bar ----------------------------- */
+#lb-prog {
+  height: 2px;
+  background: var(--rule);
+  flex-shrink: 0;
+}
+
+#lb-prog-fill {
+  height: 100%;
+  background: var(--snap);
+  width: 0%;
+}
+
+/* --- Main image area ------------------------------------ */
+.lb-main {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Image wrap — controls zoom cursor */
+#lb-wrap {
+  max-width: calc(100% - 108px);
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-in;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+#lb-wrap.zoomed { cursor: zoom-out; }
+
+#lb-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  transition: opacity .2s, transform .3s ease;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+#lb-img.zoomed { transform: scale(2.6); }
+
+/* --- Nav buttons --------------------------------------- */
+.lb-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 0;          /* sharp */
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .12s;
+}
+
+.lb-nav:hover    { background: rgba(255,255,255,.16); }
+.lb-nav:disabled { opacity: .18; pointer-events: none; }
+#lb-prev { left: 12px; }
+#lb-next { right: 12px; }
+
+/* --- Thumbnail strip ----------------------------------- */
+.lb-strip {
+  height: var(--strip-h);
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 0 10px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  border-top: 1px solid var(--rule);
+  background: var(--matte);
+  scrollbar-width: thin;
+  scrollbar-color: #2e2e2e transparent;
+}
+
+.lb-strip::-webkit-scrollbar { height: 3px; }
+.lb-strip::-webkit-scrollbar-track { background: transparent; }
+.lb-strip::-webkit-scrollbar-thumb { background: #2e2e2e; }
+
+.lt {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  flex-shrink: 0;
+  cursor: pointer;
+  opacity: .35;
+  border: 2px solid transparent;
+  border-radius: 0;          /* sharp */
+  transition: opacity .15s, border-color .15s;
+  display: block;
+}
+
+.lt:hover  { opacity: .65; }
+.lt.active { opacity: 1; border-color: var(--snap); }
+
+/* ──────────────────────────────────────────────────────────
+   KEYBOARD HINT
+   ────────────────────────────────────────────────────────── */
+#kb-hint {
+  position: fixed;
+  bottom: calc(var(--strip-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,.85);
+  border: 1px solid var(--rule);
+  backdrop-filter: blur(10px);
+  padding: 7px 16px;
+  font-size: 11px;
+  color: var(--dim);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .3s;
+  z-index: 200;
+}
+
+#kb-hint.show { opacity: 1; }
+
+kbd {
+  display: inline-block;
+  background: var(--matte);
+  border: 1px solid #3c3c3c;
+  border-bottom-width: 2px;
+  padding: 0 5px;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 17px;
+  color: var(--type);
+  border-radius: 3px;
+  margin: 0 1px;
+}
+
+/* ──────────────────────────────────────────────────────────
+   RESPONSIVE
+   ────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  #gallery { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  #lb-wrap { max-width: calc(100% - 80px); }
+  .lb-nav  { width: 34px; height: 34px; }
+  #lb-prev { left: 6px; }
+  #lb-next { right: 6px; }
+  .lb-strip { display: none; }
+  #lb-filename { display: none; }
+  #kb-hint { bottom: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gi > img, #lb-img, .gi-num, .lb-nav { transition: none !important; }
+}
+
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ────────────────────────────────────────────── -->
+<header class="site-header">
+  <h1>Gallery</h1>
+  <span id="status"></span>
+</header>
+
+<!-- ── LOADING ───────────────────────────────────────────── -->
+<div id="loading-screen" class="screen">
+  <div class="spinner"></div>
+  <p id="load-msg">Scanning <code>public/</code> for images…</p>
+</div>
+
+<!-- ── EMPTY ─────────────────────────────────────────────── -->
+<div id="empty-screen" class="screen" style="display:none">
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity=".3">
+    <rect x="3" y="3" width="18" height="18" rx="1"/>
+    <circle cx="8.5" cy="8.5" r="1.5"/>
+    <polyline points="21 15 16 10 5 21"/>
+  </svg>
+  <p>No images found in <code>public/</code></p>
+  <p style="margin-top:4px;font-size:12px;opacity:.7">
+    Add <code>1.png</code>, <code>2.png</code>, … then reload the page.
+  </p>
+</div>
+
+<!-- ── GALLERY GRID ──────────────────────────────────────── -->
+<div id="gallery" style="display:none"></div>
+
+<!-- ── LIGHTBOX ──────────────────────────────────────────── -->
+<div id="lb" role="dialog" aria-modal="true" aria-label="Image viewer">
+
+  <!-- Toolbar -->
+  <div class="lb-bar">
+    <span id="lb-counter"></span>
+    <span id="lb-filename"></span>
+    <div class="lb-actions">
+
+      <!-- Slideshow -->
+      <button class="ib" id="btn-play" title="Slideshow  S">
+        <!-- play icon -->
+        <svg id="ico-play" width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+        <!-- pause icon — hidden by default -->
+        <svg id="ico-pause" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+        </svg>
+      </button>
+
+      <!-- Fullscreen -->
+      <button class="ib" id="btn-fs" title="Fullscreen  F">
+        <svg id="ico-enter-fs" width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <polyline points="15 3 21 3 21 9"/>
+          <polyline points="9 21 3 21 3 15"/>
+          <line x1="21" y1="3" x2="14" y2="10"/>
+          <line x1="3" y1="21" x2="10" y2="14"/>
+        </svg>
+        <svg id="ico-exit-fs" width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none">
+          <polyline points="4 14 10 14 10 20"/>
+          <polyline points="20 10 14 10 14 4"/>
+          <line x1="10" y1="14" x2="3" y2="21"/>
+          <line x1="21" y1="3" x2="14" y2="10"/>
+        </svg>
+      </button>
+
+      <!-- Zoom -->
+      <button class="ib" id="btn-zoom" title="Zoom  Z">
+        <svg id="ico-zoom-in" width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          <line x1="11" y1="8" x2="11" y2="14"/>
+          <line x1="8" y1="11" x2="14" y2="11"/>
+        </svg>
+        <svg id="ico-zoom-out" width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          <line x1="8" y1="11" x2="14" y2="11"/>
+        </svg>
+      </button>
+
+      <!-- Download -->
+      <button class="ib" id="btn-dl" title="Download  D">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </button>
+
+      <!-- Close -->
+      <button class="ib" id="btn-close" title="Close  Esc">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- Slideshow progress bar -->
+  <div id="lb-prog"><div id="lb-prog-fill"></div></div>
+
+  <!-- Main image area -->
+  <div class="lb-main" id="lb-main">
+    <button class="lb-nav" id="lb-prev" aria-label="Previous image">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+
+    <div id="lb-wrap">
+      <img id="lb-img" src="" alt="" draggable="false" />
+    </div>
+
+    <button class="lb-nav" id="lb-next" aria-label="Next image">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Thumbnail strip -->
+  <div class="lb-strip" id="lb-strip" role="list" aria-label="Image thumbnails"></div>
+</div>
+
+<!-- ── KEYBOARD HINT ─────────────────────────────────────── -->
+<div id="kb-hint">
+  <kbd>←</kbd><kbd>→</kbd> navigate &nbsp;·&nbsp;
+  <kbd>Z</kbd> zoom &nbsp;·&nbsp;
+  <kbd>F</kbd> fullscreen &nbsp;·&nbsp;
+  <kbd>S</kbd> slideshow &nbsp;·&nbsp;
+  <kbd>D</kbd> download &nbsp;·&nbsp;
+  <kbd>Esc</kbd> close
+</div>
+
+<script>
+/* ================================================================
+   CONFIGURATION — tweak here if needed
+================================================================ */
+const CFG = {
+  dir:      'public/',   // folder with images
+  ext:      'png',       // file extension
+  maxScan:  500,         // how many numbers to probe before stopping
+  chunk:    10,          // parallel probes per batch
+  slideMs:  3500,        // slideshow interval (ms)
+};
+
+/* ================================================================
+   STATE
+================================================================ */
+let images   = [];   // ['public/1.png', 'public/2.png', …]
+let current  = 0;
+let isZoomed = false;
+let ssTimer  = null;
+
+/* ================================================================
+   HELPERS
+================================================================ */
+const $  = id  => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+
+/* ================================================================
+   IMAGE DISCOVERY
+   Probes in parallel chunks; stops at the first missing index.
+================================================================ */
+function probe(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload  = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = src;
+  });
+}
+
+async function discover() {
+  const found = [];
+  for (let i = 1; i <= CFG.maxScan; ) {
+    const indices = [];
+    for (let j = i; j < i + CFG.chunk && j <= CFG.maxScan; j++) indices.push(j);
+
+    const srcs = indices.map(n => `${CFG.dir}${n}.${CFG.ext}`);
+    const hits = await Promise.all(srcs.map(probe));
+
+    let broke = false;
+    for (let k = 0; k < hits.length; k++) {
+      if (hits[k]) {
+        found.push(srcs[k]);
+      } else {
+        broke = true;
+        break;
+      }
+    }
+    if (broke) break;
+
+    $('load-msg').innerHTML = `Found <strong>${found.length}</strong> image${found.length !== 1 ? 's' : ''}…`;
+    i += CFG.chunk;
+  }
+  return found;
+}
+
+/* ================================================================
+   GALLERY BUILD
+================================================================ */
+function buildGallery() {
+  const grid  = $('gallery');
+  const strip = $('lb-strip');
+  grid.innerHTML = strip.innerHTML = '';
+
+  images.forEach((src, i) => {
+    /* ── Grid cell ── */
+    const cell = document.createElement('div');
+    cell.className  = 'gi';
+    cell.tabIndex   = 0;
+    cell.setAttribute('role', 'button');
+    cell.setAttribute('aria-label', `Open image ${i + 1}`);
+
+    const img = document.createElement('img');
+    img.src      = src;
+    img.alt      = `Photo ${i + 1}`;
+    img.loading  = 'lazy';
+    img.decoding = 'async';
+    img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+
+    const num = document.createElement('div');
+    num.className   = 'gi-num';
+    num.textContent = i + 1;
+
+    cell.append(img, num);
+    cell.addEventListener('click', () => openLB(i));
+    cell.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLB(i); }
+    });
+    grid.appendChild(cell);
+
+    /* ── Strip thumbnail ── */
+    const thumb = document.createElement('img');
+    thumb.src      = src;
+    thumb.className = 'lt';
+    thumb.loading  = 'lazy';
+    thumb.alt      = '';
+    thumb.setAttribute('role', 'listitem');
+    thumb.setAttribute('aria-label', `Go to image ${i + 1}`);
+    thumb.addEventListener('click', () => goTo(i));
+    strip.appendChild(thumb);
+  });
+}
+
+/* ================================================================
+   LIGHTBOX — open / close / sync
+================================================================ */
+const lb      = $('lb');
+const lbImg   = $('lb-img');
+const lbWrap  = $('lb-wrap');
+
+function openLB(idx) {
+  current = idx;
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  syncLB(true);
+  flashHint();
+}
+
+function closeLB() {
+  lb.classList.remove('open');
+  document.body.style.overflow = '';
+  stopSS();
+  resetZoom();
+  exitFS();
+}
+
+function syncLB(instant = false) {
+  const src  = images[current];
+  const name = src.split('/').pop();
+
+  lbImg.style.opacity = '0';
+  lbImg.src = src;
+  lbImg.alt = `Image ${current + 1}`;
+  lbImg.onload = () => { lbImg.style.opacity = '1'; };
+
+  $('lb-counter').textContent  = `${current + 1} / ${images.length}`;
+  $('lb-filename').textContent = name;
+
+  $('lb-prev').disabled = current === 0;
+  $('lb-next').disabled = current === images.length - 1;
+
+  /* Sync thumbnail strip */
+  $$('.lt').forEach((t, i) => t.classList.toggle('active', i === current));
+  const activeTh = $$('.lt')[current];
+  if (activeTh) {
+    activeTh.scrollIntoView({
+      behavior: instant ? 'instant' : 'smooth',
+      inline: 'center',
+      block: 'nearest',
+    });
+  }
+
+  if (!instant) resetZoom();
+}
+
+function goTo(idx) {
+  if (idx < 0 || idx >= images.length) return;
+  current = idx;
+  syncLB();
+  if (ssTimer) restartSS();
+}
+
+/* ================================================================
+   ZOOM — click-point-aware transform scale
+================================================================ */
+function toggleZoom(originX = '50%', originY = '50%') {
+  isZoomed = !isZoomed;
+  lbImg.style.transformOrigin = isZoomed ? `${originX} ${originY}` : 'center center';
+  lbImg.classList.toggle('zoomed', isZoomed);
+  lbWrap.classList.toggle('zoomed', isZoomed);
+  $('btn-zoom').classList.toggle('active', isZoomed);
+  $('ico-zoom-in').style.display  = isZoomed ? 'none' : '';
+  $('ico-zoom-out').style.display = isZoomed ? '' : 'none';
+}
+
+function resetZoom() {
+  if (!isZoomed) return;
+  isZoomed = false;
+  lbImg.style.transformOrigin = 'center center';
+  lbImg.classList.remove('zoomed');
+  lbWrap.classList.remove('zoomed');
+  $('btn-zoom').classList.remove('active');
+  $('ico-zoom-in').style.display  = '';
+  $('ico-zoom-out').style.display = 'none';
+}
+
+/* ================================================================
+   DOWNLOAD
+================================================================ */
+function download() {
+  const a = document.createElement('a');
+  a.href     = images[current];
+  a.download = images[current].split('/').pop();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/* ================================================================
+   SLIDESHOW — CSS-transition progress bar + setTimeout timer
+================================================================ */
+function startSS() {
+  if (ssTimer) return;
+  $('btn-play').classList.add('active');
+  $('ico-play').style.display  = 'none';
+  $('ico-pause').style.display = '';
+
+  const fill = $('lb-prog-fill');
+  const step = () => {
+    fill.style.transition = 'none';
+    fill.style.width = '0%';
+    fill.getBoundingClientRect();          // force layout flush
+    fill.style.transition = `width ${CFG.slideMs}ms linear`;
+    fill.style.width = '100%';
+
+    ssTimer = setTimeout(() => {
+      goTo((current + 1) % images.length);
+      step();
+    }, CFG.slideMs);
+  };
+  step();
+}
+
+function stopSS() {
+  if (!ssTimer) return;
+  clearTimeout(ssTimer);
+  ssTimer = null;
+  $('btn-play').classList.remove('active');
+  $('ico-play').style.display  = '';
+  $('ico-pause').style.display = 'none';
+  const fill = $('lb-prog-fill');
+  fill.style.transition = 'none';
+  fill.style.width = '0%';
+}
+
+const restartSS  = () => { stopSS(); startSS(); };
+const toggleSS   = () => ssTimer ? stopSS() : startSS();
+
+/* ================================================================
+   FULLSCREEN
+================================================================ */
+function enterFS() {
+  const fn = lb.requestFullscreen || lb.webkitRequestFullscreen;
+  if (fn) fn.call(lb);
+}
+
+function exitFS() {
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    const fn = document.exitFullscreen || document.webkitExitFullscreen;
+    if (fn) fn.call(document);
+  }
+}
+
+const toggleFS = () =>
+  (document.fullscreenElement || document.webkitFullscreenElement) ? exitFS() : enterFS();
+
+function onFSChange() {
+  const inFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  $('btn-fs').classList.toggle('active', inFS);
+  $('ico-enter-fs').style.display = inFS ? 'none' : '';
+  $('ico-exit-fs').style.display  = inFS ? '' : 'none';
+}
+
+document.addEventListener('fullscreenchange',       onFSChange);
+document.addEventListener('webkitfullscreenchange', onFSChange);
+
+/* ================================================================
+   KEYBOARD HINT
+================================================================ */
+let hintTimer;
+function flashHint() {
+  const el = $('kb-hint');
+  el.classList.add('show');
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ================================================================
+   EVENTS — lightbox controls
+================================================================ */
+$('btn-close').addEventListener('click', closeLB);
+$('btn-play').addEventListener('click',  toggleSS);
+$('btn-fs').addEventListener('click',    toggleFS);
+$('btn-zoom').addEventListener('click',  () => toggleZoom());
+$('btn-dl').addEventListener('click',    download);
+$('lb-prev').addEventListener('click',   () => goTo(current - 1));
+$('lb-next').addEventListener('click',   () => goTo(current + 1));
+
+/* Click on image wrap = zoom to that point, or zoom out */
+lbWrap.addEventListener('click', e => {
+  e.stopPropagation();
+  if (!isZoomed) {
+    /* Calculate click position relative to the image */
+    const rect = lbImg.getBoundingClientRect();
+    const ox = (((e.clientX - rect.left) / rect.width)  * 100).toFixed(1) + '%';
+    const oy = (((e.clientY - rect.top)  / rect.height) * 100).toFixed(1) + '%';
+    toggleZoom(ox, oy);
+  } else {
+    toggleZoom();
+  }
+});
+
+/* Click on lb-main backdrop (not on wrap/nav) = close */
+$('lb-main').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeLB();
+});
+
+/* ================================================================
+   EVENTS — keyboard
+================================================================ */
+document.addEventListener('keydown', e => {
+  if (!lb.classList.contains('open')) return;
+  switch (e.key) {
+    case 'ArrowLeft':
+    case 'ArrowUp':    e.preventDefault(); goTo(current - 1); break;
+    case 'ArrowRight':
+    case 'ArrowDown':  e.preventDefault(); goTo(current + 1); break;
+    case 'Home':       e.preventDefault(); goTo(0); break;
+    case 'End':        e.preventDefault(); goTo(images.length - 1); break;
+    case 'Escape':     closeLB(); break;
+    case 'z': case 'Z': toggleZoom(); break;
+    case 'd': case 'D': download(); break;
+    case 's': case 'S': toggleSS(); break;
+    case 'f': case 'F': toggleFS(); break;
+  }
+});
+
+/* ================================================================
+   EVENTS — touch / swipe
+================================================================ */
+let touchX = 0, touchY = 0;
+
+lbWrap.addEventListener('touchstart', e => {
+  touchX = e.touches[0].clientX;
+  touchY = e.touches[0].clientY;
+}, { passive: true });
+
+lbWrap.addEventListener('touchend', e => {
+  if (isZoomed) return;          // don't swipe while zoomed
+  const dx = e.changedTouches[0].clientX - touchX;
+  const dy = e.changedTouches[0].clientY - touchY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+    goTo(dx < 0 ? current + 1 : current - 1);
+  }
+}, { passive: true });
+
+/* ================================================================
+   INIT
+================================================================ */
+async function init() {
+  images = await discover();
+
+  $('loading-screen').style.display = 'none';
+
+  if (!images.length) {
+    $('empty-screen').style.display = 'flex';
+    return;
+  }
+
+  $('status').textContent = `${images.length} image${images.length !== 1 ? 's' : ''}`;
+  buildGallery();
+  $('gallery').style.display = 'grid';
+}
+
+init();
+</script>
+</body>
+</html>
